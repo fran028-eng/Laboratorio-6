@@ -1,0 +1,15 @@
+ comandos utilizados en la Practica 4 Configurar 2FA con google authenticator Modulo PAM para Acceso SSH
+
+
+sudo apt update
+sudo apt install libpam-google-authenticator
+google-authenticator
+sudo nano /etc/pam.d/sshd
+#auth required pam_google_authenticator.so
+sudo nano /etc/ssh/sshd_config
+#ChallengeResponseAuthentication yes
+#UsePAM yes
+#AuthenticationMethods publickey,password publickey,keyboard-interactive
+sudo systemctl restart ssh
+chmod 600 ~/.google_authenticator
+

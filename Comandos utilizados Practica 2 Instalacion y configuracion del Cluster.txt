@@ -1,0 +1,18 @@
+Practica 2 Instalacion y configuracion del Cluster
+
+sudo apt update
+sudo apt install heartbeat -y
+
+sudo nano /etc/ha.d/ha.cf
+sudo nano /etc/ha.d/haresources
+sudo nano /etc/ha.d/authkeys
+sudo chmod 600 /etc/ha.d/authkeys
+
+
+sudo systemctl start heartbeat
+sudo systemctl enable heartbeat
+sudo systemctl status heartbeat
+
+ip a | grep 10.0.0.100
+ping 10.0.0.100
+sudo systemctl stop heartbeat

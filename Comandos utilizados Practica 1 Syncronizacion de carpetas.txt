@@ -1,0 +1,14 @@
+Practica 1 Syncronizacion de carpetas con Rsync
+
+
+mkdir -p /home/francisco1/sync_origen
+cd /home/francisco1/sync_origen
+touch archivo{1..100}.txt
+rsync -avz /home/francisco1/sync_origen/ root@192.168.X.X:/home/francisco1/sync_destino/
+crontab -e
+touch nuevo.txt
+ls | grep archivo
+wc -l
+systemctl status cron
+grep rsync /var/log/syslog
+

@@ -1,0 +1,46 @@
+Practica 3: Cluster de Alta Disponibilidad HTTP 
+
+
+
+sudo systemctl status nginx
+     apt install keepalived -y
+     echo '<h1>Hola desde nodo 1</h1>' | sudo tee /var/www/html/index.nginx-debian.html
+     nano /etc/keepalived/keepalived.conf
+     ping 10.0.0.100
+     sudo systemctl enable --now keepalived
+     ping 10.0.0.100
+     sudo systemctl status keepalived
+     ping 10.0.0.100
+     ip a
+     sudo ss -tuln | grep ':80'
+     sudo systemctl restart nginx
+     sudo nano /etc/nginx/sites-available/default
+     sudo systemctl restart nginx
+     sudo ss -tuln | grep ':8080'
+     sudo systemctl status nginx
+     sudo ss -tuln | grep 8080
+     ip a | grep 10.0.0.100
+     sudo grep -R "root " /etc/nginx/sites-available/default
+     echo '<h1>Hola desde nodo1 (puerto 8080)</h1>' | sudo tee /var/www/html/index.html
+     sudo systemctl restart nginx
+     curl http://localhost:8080
+     sudo rm /var/www/html/index.nginx-debian.html
+     sudo systemctl restart nginx
+     systemctl stop nginx
+     systemctl start nginx
+     sudo nano /etc/keepalived/keepalived.conf
+     sudo systemctl restart keepalived
+     sudo systemctl status keepalived
+     sudo journalctl -u keepalived -f
+     sudo iptables -L -v -n | grep 112
+     sudo nft list ruleset | grep 112
+     sudo ufw status verbose
+     sudo ufw enable
+     sudo ufw status verbose
+     sudo ufw allow proto 112
+     sudo ufw allow proto 112 from any to any
+     sudo iptables -I INPUT -p 112 -j ACCEPT
+     sudo iptables -I OUTPUT -p 112 -j ACCEPT
+     sudo ufw disable
+     systemctl stop nginx
+     reboot
