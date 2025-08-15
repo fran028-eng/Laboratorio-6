@@ -1,46 +1,174 @@
-Practica 3: Cluster de Alta Disponibilidad HTTP 
+Comandos utilizados Practica 3 -Instalacion de IDS snort 1pts
+
+
+#0) Preparación — actualiza repositorios
+
+sudo apt update
+
+
+#1) Instalar Snort
+
+sudo apt install -y snort
+
+
+#Verificación:
+snort --version
+
+#2) Detectar interfaz y red local (para configurar HOME_NET automáticamente)
+
+# determina la interfaz usada para salir a internet
+IFACE=$(ip route get 8.8.8.8 2>/dev/null | awk '{print $5; exit}')
+# obtiene la red CIDR asociada a esa interfaz (ej. 192.168.1.0/24 o 10.0.0.0/24)
+HOME_NET=$(ip -o -f inet addr show "$IFACE" | awk '{print $4}' | head -n1)
+# muestra valores detectados
+echo "IFACE=$IFACE"
+echo "HOME_NET=$HOME_NET"
+
+
+#3) Configurar HOME_NET en /etc/snort/snort.conf
+
+# hace copia de seguridad
+sudo cp /etc/snort/snort.conf /etc/snort/snort.conf.bak
+
+# reemplaza la línea var HOME_NET ... por la red detectada
+sudo sed -i "s|^var HOME_NET .*|var HOME_NET $HOME_NET|" /etc/snort/snort.conf
+
+# confirmación rápida
+grep "^var HOME_NET" /etc/snort/snort.conf
+
+
+#4) Asegurarse de que se incluya local.rules
+
+# crea carpeta de reglas si hace falta
+sudo mkdir -p /etc/snort/rules
+sudo touch /etc/snort/rules/local.rules
+sudo chown root:root /etc/snort/rules/local.rules
+
+# verificar que snort.conf incluya local.rules (si no, lo añadimos)
+grep -q "local.rules" /etc/snort/snort.conf || \
+  echo "include $RULE_PATH/local.rules" | sudo tee -a /etc/snort/snort.conf
+
+# mostrar la línea (confirmación)
+grep -n "local.rules" /etc/snort/snort.conf || true
 
 
 
-sudo systemctl status nginx
-     apt install keepalived -y
-     echo '<h1>Hola desde nodo 1</h1>' | sudo tee /var/www/html/index.nginx-debian.html
-     nano /etc/keepalived/keepalived.conf
-     ping 10.0.0.100
-     sudo systemctl enable --now keepalived
-     ping 10.0.0.100
-     sudo systemctl status keepalived
-     ping 10.0.0.100
-     ip a
-     sudo ss -tuln | grep ':80'
-     sudo systemctl restart nginx
-     sudo nano /etc/nginx/sites-available/default
-     sudo systemctl restart nginx
-     sudo ss -tuln | grep ':8080'
-     sudo systemctl status nginx
-     sudo ss -tuln | grep 8080
-     ip a | grep 10.0.0.100
-     sudo grep -R "root " /etc/nginx/sites-available/default
-     echo '<h1>Hola desde nodo1 (puerto 8080)</h1>' | sudo tee /var/www/html/index.html
-     sudo systemctl restart nginx
-     curl http://localhost:8080
-     sudo rm /var/www/html/index.nginx-debian.html
-     sudo systemctl restart nginx
-     systemctl stop nginx
-     systemctl start nginx
-     sudo nano /etc/keepalived/keepalived.conf
-     sudo systemctl restart keepalived
-     sudo systemctl status keepalived
-     sudo journalctl -u keepalived -f
-     sudo iptables -L -v -n | grep 112
-     sudo nft list ruleset | grep 112
-     sudo ufw status verbose
-     sudo ufw enable
-     sudo ufw status verbose
-     sudo ufw allow proto 112
-     sudo ufw allow proto 112 from any to any
-     sudo iptables -I INPUT -p 112 -j ACCEPT
-     sudo iptables -I OUTPUT -p 112 -j ACCEPT
-     sudo ufw disable
-     systemctl stop nginx
-     reboot
+#5) Añadir reglas de detección (ICMP, 21, 22, 80)
+#Las reglas usan $HOME_NET tal y como lo interpreta Snort; no expandimos variables en el heredoc (usamos quoted EOF).
+
+
+sudo tee /etc/snort/rules/local.rules > /dev/null <<'EOF'
+# Detectar ICMP (ping) hacia HOME_NET
+alert icmp any any -> $HOME_NET any (msg:"SNORT ALERT - ICMP to HOME_NET"; sid:1000001; rev:1;)
+
+# Detectar todo el trafico TCP hacia puerto 21 (FTP)
+alert tcp any any -> $HOME_NET 21 (msg:"SNORT ALERT - TCP to FTP (21)"; sid:1000002; rev:1;)
+
+# Detectar todo el trafico TCP hacia puerto 22 (SSH)
+alert tcp any any -> $HOME_NET 22 (msg:"SNORT ALERT - TCP to SSH (22)"; sid:1000003; rev:1;)
+
+# Detectar todo el trafico TCP hacia puerto 80 (HTTP)
+alert tcp any any -> $HOME_NET 80 (msg:"SNORT ALERT - TCP to HTTP (80)"; sid:1000004; rev:1;)
+EOF
+
+# permisos
+sudo chmod 644 /etc/snort/rules/local.rules
+
+# mostrar las reglas añadidas
+sudo sed -n '1,200p' /etc/snort/rules/local.rules
+
+
+
+#6) Probar Snort en modo consola para ver alertas en vivo (modo IDS interactivo)
+#Esto ejecuta Snort capturando en la interfaz detectada y muestra alertas en la consola. Útil para pruebas rápidas.
+
+sudo snort -c /etc/snort/snort.conf -i "$IFACE" -A console -s 65535 -k none
+
+
+
+#7) (Alternativa) Ejecutar Snort como servicio/daemon
+#Si prefieres dejar Snort corriendo en background y revisar logs:
+
+
+# intentar reiniciar/arrancar servicio (si el paquete creó el servicio)
+sudo systemctl restart snort
+sudo systemctl enable --now snort || true
+
+# Ver estado
+sudo systemctl status snort --no-pager
+
+
+
+
+#Si tu paquete no provee servicio, usa nohup o screen para lanzar en background:
+
+
+sudo nohup snort -c /etc/snort/snort.conf -i "$IFACE" -D -s 65535 -k none >/var/log/snort/snort.console 2>&1 &
+# listar procesos
+ps aux | grep snort | grep -v grep
+
+
+#8) Generar tráfico de prueba (desde otra máquina / host attacker)
+#Reemplaza <VM_IP> por la IP de la VM donde corre Snort (o usa la IP detectada en HOME_NET si pruebas localmente).
+
+
+#ICMP (ping):
+
+ping -c 3 <VM_IP>
+
+#Conexión TCP a FTP (puerto 21):
+nc -vz <VM_IP> 21
+
+
+#Conexión TCP a SSH (puerto 22):
+nc -vz <VM_IP> 22
+
+Petición HTTP (puerto 80):
+curl -I http://<VM_IP> || true
+
+
+
+#9) Ver registros / alertas generadas
+#Si ejecutaste Snort en modo consola verás las alertas ahí. Si Snort está en modo servicio, revisa archivos de log:
+
+
+# ruta común
+ls -l /var/log/snort/
+
+# archivo de alertas tradicional
+sudo tail -n 200 /var/log/snort/alert
+
+# si se usa formato unified2 (ficheros .u2), busca en /var/log/snort/ o /var/log/snort/fast.log
+ls -lh /var/log/snort/* | sed -n '1,200p'
+
+# buscar mensajes relacionados con las SIDs que creamos
+sudo grep -R "1000001\|1000002\|1000003\|1000004" /var/log/snort* /var/log/syslog* || true
+
+
+
+#10) Validaciones rápidas y troubleshooting
+
+#Si no ves alertas en consola:
+#Verifica interfaz correcta: ip a y que IFACE sea la interfaz que recibe el tráfico.
+#Asegura que Snort esté corriendo con el snort.conf correcto: sudo snort -T -c /etc/snort/snort.conf (test de configuración).
+
+
+sudo snort -T -c /etc/snort/snort.conf
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
