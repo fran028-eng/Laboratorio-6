@@ -1,14 +1,73 @@
-Practica 1 Syncronizacion de carpetas con Rsync
+#Practica 1 - Cifrado 1pts
+
+#1️-Instalar GPG2
+
+#En Parrot OS normalmente ya viene instalado, pero por si no:
+
+sudo apt update && sudo apt install gnupg2 -y
 
 
-mkdir -p /home/francisco1/sync_origen
-cd /home/francisco1/sync_origen
-touch archivo{1..100}.txt
-rsync -avz /home/francisco1/sync_origen/ root@192.168.X.X:/home/francisco1/sync_destino/
-crontab -e
-touch nuevo.txt
-ls | grep archivo
-wc -l
-systemctl status cron
-grep rsync /var/log/syslog
+#2-Generar tus claves GPG
+
+#Si es la primera vez que lo usas:
+
+gpg2 --full-generate-key
+
+
+#Comprobar que la clave existe:
+gpg2 --list-keys
+
+
+
+#3️ Crear carpeta y archivo a cifrar
+
+mkdir -p ~/cifrado_gpg
+echo "Este es un archivo secreto" > ~/cifrado_gpg/secreto.txt
+
+
+#4️-Cifrar el archivo
+
+#Busca tu ID de clave:
+gpg2 --list-keys
+
+#Cifra el archivo:
+gpg2 -e -r "TU_ID_O_EMAIL" ~/cifrado_gpg/secreto.txt
+
+#5️- Intentar abrir el archivo cifrado
+
+
+cat ~/cifrado_gpg/secreto.txt.gpg
+#Verás texto ilegible (datos binarios).
+
+#6-Descifrar el archivo
+
+gpg2 -d ~/cifrado_gpg/secreto.txt.gpg > ~/cifrado_gpg/secreto_descifrado.txt
+
+
+#7️- Verificar contenido descifrado
+
+cat ~/cifrado_gpg/secreto_descifrado.txt
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
